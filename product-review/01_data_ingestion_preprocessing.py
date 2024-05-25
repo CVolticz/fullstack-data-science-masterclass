@@ -7,6 +7,10 @@
 
 # COMMAND ----------
 
+!pip install tqdm
+
+# COMMAND ----------
+
 # python import
 import ast
 import numpy as np
@@ -15,6 +19,9 @@ import pandas as pd
 # pyspark import
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
+
+# progress bar
+from tqdm.notebook import tqdm
 
 # COMMAND ----------
 
@@ -77,7 +84,7 @@ product_review_raw_df.info()
 
 # MAGIC %md
 # MAGIC ## Processing Weight
-# MAGIC From initial glance at the data, it seem like the weight do not follow one unit system. Noticed sometime the weight is measured in gram and sometime the weight is measures in oz. While consider the project scope, these metrics might not be necessary. However, it might be worth it to see just how many records and what type of conversion we might need to do. Let's create some bar plot for our purpose
+# MAGIC From initial glance at the data, it seems like the weight do not follow one unit system. Noticed sometime the weight is measured in gram and sometime the weight is measures in oz. While consider the project scope, these metrics might not be necessary. However, it might be worth it to see just how many records and what type of conversion we might need to do. Let's create some bar plot for our purpose.
 
 # COMMAND ----------
 
@@ -123,29 +130,118 @@ display(product_review_spark)
 
 # COMMAND ----------
 
+# write data out
+product_review_raw_df.to_csv("/Volumes/main/default/processed/product_review_data.csv")
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ## Processing Price Dictionary
 # MAGIC Notice that the prices column is a little odd, the first investigation into the price column shows that the column contains a list of price dictionary object. Each dictionary object contains a price source in different currency unit, merchant, shipping type, and also date posted. This column is a perfect candidate for data mining. We will apply some techniques to isolate all information in this data properly and save it for future referenes.
 
 # COMMAND ----------
 
-# test viewing 
+product_review_raw_df['prices'].values[0].strip('][').split(', ')
+
+# COMMAND ----------
+
+# test view of 1 row of data
 ast.literal_eval(product_review_raw_df['prices'].values[0].strip('][').split(', ')[0])
 
 # COMMAND ----------
 
-def isolate_dictionary(row):
+# MAGIC %md
+# MAGIC ### Price Dictionary - Design Thinking
+# MAGIC Because of the nature of the price dictionary data, we would need to create a dataframe for each row of data. This technique is commonly known as internal data mining. Here we're essentially extract more information from a given piece of data. One thing to note while mining this data is be sure to also create a way for this piece of data to associate back to the original. Here's I'm thinking of a duplicated product id column with multiple rows of pricing information (min,max,currency units, etc.)
+
+# COMMAND ----------
+
+
+def isolate_dict(row):
+    """
+        given a row of string
+        split it into a dictionary
+    """
     if row != row:
-        return np.Nan
+        return np.nan
+    else:
+        return row.strip('][').split(', ')[0]
+
+def create_dataframe(row):
+    """
+        Given a row contains a dictionary,
+        returns the key: value pairs
+    """
+    if row != row:
+        return np.nan
+    
+    # specified the pertinent data columns
+    data_columns = ['amountMax',
+                    'amountMin',
+                    'condition',
+                    'currency',
+                    'dateAdded',
+                    'dateSeen',
+                    'isSale',
+                    'merchant',
+                    'shipping',
+                    'sourceURLs']
+
+    temp_df_list = []
+    for price_dict in row:
+        # if the dictionary doesn't have a column, create one and holds an NaN value
+        for d in data_columns:
+            if d not in price_dict.keys():
+                price_dict[d] = np.nan 
+
+        # create a data frame from the data
+        df = pd.DataFrame(columns=data_columns).from_dict(price_dict, orient='index').T
+        temp_df_list.append(df)
+
+    return pd.concat(temp_df_list).reset_index(drop=True)
 
 # COMMAND ----------
 
 # parse pricing
 # 1. turn string of list to just a list
-product_review_raw_df['prices'] = product_review_raw_df['prices'].apply(lambda x: ast.literal_eval(x.strip('][').split(', ')))
-product_review_raw_df = product_review_raw_df.assign(maxPrice=lambda x: x.prices[0]['amountMax'])\
-                                            .assign(minPrice=lambda x: x.prices[0]['amountMin'])\
-                                            .assign(currentPrice=lambda x: x.prices[0]['currentPrice'])
+product_review_raw_df['prices_dict'] = product_review_raw_df['prices'].apply(lambda x: ast.literal_eval(x))
+
+# 2. for each row of pricing data return a data frame of the associated pricing
+pricing_df_list = []
+for i, row in tqdm(product_review_raw_df.iterrows()):
+    # capture the row ID
+    product_id = row['id'] 
+    temp_price_df = create_dataframe(row['prices_dict'])
+    try:
+        # attach product id and add it to the general dataframe
+        temp_price_df['id'] = product_id
+        pricing_df_list.append(temp_price_df)
+    except Exception as e:
+        print(e)
+        pass
+
+pricing_df = pd.concat(pricing_df_list, axis=0).reset_index(drop=True)
+pricing_df
+
+# COMMAND ----------
+
+# noted that two columns dateSeen and SourceURLs contains a list of multiple items. Let's expand the those data for additonal information
+pricing_df = pricing_df.explode(["dateSeen"])
+pricing_df = pricing_df.explode("sourceURLs")
+pricing_df = pricing_df.drop_duplicates(keep='first')
+pricing_df = pricing_df.reset_index(drop=True)
+pricing_df
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Write Pricing Out
+# MAGIC From 1,597 rows of data, we were able to obtain about 20,100 extra rows of pricing information (probably more if we counted several columns where the value are in list format). Since this piece of information is valudation, it is worth writing it back out to our datalake for future analysis.
+
+# COMMAND ----------
+
+# write data out to ADLS
+pricing_df.to_csv("/Volumes/main/default/processed/amazon_product_pricing_data.csv")
 
 # COMMAND ----------
 
