@@ -130,6 +130,24 @@ display(product_review_spark)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## Renamming Columns and Write Processed Data
+
+# COMMAND ----------
+
+renaming_cols={
+    "reviews.date": "reviewsDate",
+    "reviews.numHelpful": "helpfullness",
+    "reviews.rating": "rating",
+    "reviews.title": "reviewsTitle",
+    "reviews.text": "customerReviews",
+    "reviews.username": "username"
+}
+
+product_review_raw_df = product_review_raw_df.rename(columns=renaming_cols)
+
+# COMMAND ----------
+
 # write data out
 product_review_raw_df.to_csv("/Volumes/main/default/processed/product_review_data.csv")
 
@@ -234,9 +252,27 @@ pricing_df
 
 # COMMAND ----------
 
+pricing_df.info()
+
+# COMMAND ----------
+
+# check to see if the ability data can be fill
+# noted that since we're only seeing two In Stock and Yes, and there is no other column we can reference to. We cal also safely drop this column
+# we ceratinly can build a scraper to get this information if necessary through the given URL.
+availability_df = pricing_df[~(pricing_df['availability'] != pricing_df['availability'])][['availability', 'isSale']]
+availability_df['availability'].unique(), pricing_df['isSale'].unique()
+
+# COMMAND ----------
+
+# a quick dataframe info shows that a few columns of data (condition, offer, returnPolicy, warranty) have very few row of data. Compared to the size of the dataframe, I think we can safely drop these columns
+pricing_df = pricing_df.drop(columns=["condition", "offer", "returnPolicy", "warranty", "availability"])
+pricing_df
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### Write Pricing Out
-# MAGIC From 1,597 rows of data, we were able to obtain about 20,100 extra rows of pricing information (probably more if we counted several columns where the value are in list format). Since this piece of information is valudation, it is worth writing it back out to our datalake for future analysis.
+# MAGIC From 1,597 rows of data, we were able to obtain about 20,100 extra rows of pricing information. Since this piece of information is valudation, it is worth writing it back out to our datalake for future analysis.
 
 # COMMAND ----------
 
