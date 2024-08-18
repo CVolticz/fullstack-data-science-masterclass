@@ -39,7 +39,7 @@ if [[ $(which docker) && $(docker --version) ]]; then
 fi
 
 # Build the docker image
-DOCKER_IMAGE="w210-pyspark-env"
+DOCKER_IMAGE="fullstack-ds-pyspark-env"
 echo "Initiating the docker image: ${DOCKER_IMAGE}"
 cd ./
 sudo docker-compose up

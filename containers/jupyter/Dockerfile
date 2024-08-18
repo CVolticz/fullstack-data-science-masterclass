@@ -2,14 +2,11 @@
 FROM jupyter/pyspark-notebook:latest
 # FROM pyspark_gpu_image:latest 
 
-# # instantiate container as root user
-# USER root
-
 # # env language -> standardized to utf8
 # # fix encoding issues
 # ENV LC_ALL=C.UTF-8
 # ENV LANG=C.UTF-8
-
+    
 # # install apt packages
 # RUN apt update && apt install -y fluidsynth
 

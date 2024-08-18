@@ -1,13 +1,12 @@
-
-version: '3.10'
-
 services:
+  # Pyspark
   pyspark:
+    # image: pyspark
     build: 
-      context: ./pyspark
-    image: pyspark
+      context: ./containers/jupyter
+      dockerfile: Dockerfile
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all  # This will make all GPUs visible to the container
+      - NVIDIA_VISIBLE_DEVICES=all  # This willW make all GPUs visible to the container
       - GRANT_SUDO=yes
     deploy:
       resources:
@@ -29,8 +28,9 @@ services:
       - "8888"
     ports:
       - "8888:8888"
-    
 
+    
+  # Postgres
   postgres:
     image: postgres
     restart: always
