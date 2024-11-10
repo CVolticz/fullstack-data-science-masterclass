@@ -1,7 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC # Sentimental Analysis
-# MAGIC The dataset that were processed are product reviews obtained from Amazon. As such, the review data are natural language and thus captured the perspective, intention, and emotion of the customers. Useful information can be extract from textual data. However, computer don't quite understand textual data like you and I. On the other hand, computers are really good at performing calculation. So, in order to start extracting sentimental information from textual data we must transform textual data into numerial values and then have the computer learn to associate thes numbers with one another, creating contextual information in the process.
+# MAGIC # Exploratory Analysis
+# MAGIC EDA is perhaps the most important step in a data science process. Essentially, a good data scientist must be able to tell a complete story with the data before start building any model to answer a question. Additionally, EDA serves as a stepping stone to frame and reframe the ask from the business stakeholders, allows for natural conversation, and enable data scientists to provide guidance on business direction even before any advance modeling works. 
+# MAGIC
+# MAGIC Ofcourse, any analysis would requires data visualization tools. There are a few ways (internally and externally) to represent the story of your data as well as tailoring to the target audience. Here we'll first explore the python matplotlib/seborn library to perform some internal plots then switch these analysis over to reporting tools such as powerBI.
 
 # COMMAND ----------
 
@@ -12,14 +14,17 @@
 
 # COMMAND ----------
 
+# python imports
 import pandas as pd
-
 import numpy as np
+
+# NLP imports
 from langdetect import detect
 import gensim.downloader
 
 # COMMAND ----------
 
+# Load data
 product_review_df = pd.read_csv("/Volumes/main/default/processed/product_review_data.csv")
 product_review_df
 
@@ -48,7 +53,8 @@ def word_count(data):
     subset = df_copy[['id', 'customerReviews']]
     df_copy.dropna(subset=['id', 'customerReviews'], inplace=True)
     
-    #get word count
+    #tokenize the review and get word count
+    df_copy['review_tokenized'] = df_copy['customerReviews'].str.split()
     df_copy['word_num'] = df_copy['customerReviews'].str.split().str.len()
         
     #remove entries where only 5 or less words review
@@ -82,14 +88,15 @@ preprocessed_reviews
 
 # Noted that majority of the reivews are under 500 words
 # Taking a Logarithm scale there are also very few reviews less than 10 words.
-# We can target our analysis to reviews above 10 words while truncating also the review length to 315 words (the tallest peak of our data) 
+# We can target our analysis to reviews above 10 words while truncating also the review length to 315 words
+# NOTE: the tallest peak of our data is at around the 415 words point
 preprocessed_reviews_spark = spark.createDataFrame(preprocessed_reviews)
 display(preprocessed_reviews_spark)
 
 # COMMAND ----------
 
 # seem like there are a few instances where the review are written in another language.
-# Since the size of these data is small, we can simply drop them
+# Since the size of the data in other is small, we can simply drop them
 preprocessed_reviews_spark.groupBy("language").count().display()
 
 # COMMAND ----------
@@ -105,6 +112,19 @@ preprocessed_reviews
 
 # MAGIC %md
 # MAGIC ## Embeddings
+# MAGIC
+# MAGIC How should we think about embeddings relative to language? How do they represent words? Are they like dictionary definitions of words with clear boundaries?  Are they a sharp clear respresentation of the meaning or are they more nebulous?
+# MAGIC
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC # Sentimental Analysis
+# MAGIC The dataset that were processed are product reviews obtained from Amazon. As such, the review data are natural language and thus captured the perspective, intention, and emotion of the customers. Useful information can be extract from textual data. However, computer don't quite understand textual data like you and I. On the other hand, computers are really good at performing calculation. So, in order to start extracting sentimental information from textual data we must transform textual data into numerial values and then have the computer learn to associate thes numbers with one another, creating contextual information in the process.
 
 # COMMAND ----------
 
