@@ -25,9 +25,14 @@ from tqdm.notebook import tqdm
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC DESCRIBE EXTERNAL LOCATION dev_adls_uc;
+
+# COMMAND ----------
+
 # Setup base directory
-BASE_EX_DIR = spark.sql("DESCRIBE EXTERNAL LOCATION metastore_root_location")\
-                .filter("name = 'metastore_root_location'")\
+BASE_EX_DIR = spark.sql("DESCRIBE EXTERNAL LOCATION dev_adls_uc")\
+                .filter("name = 'dev_adls_uc'")\
                 .select("url").head()[0]
 
 # COMMAND ----------
